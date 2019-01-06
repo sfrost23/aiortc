@@ -542,10 +542,6 @@ class RTCDtlsTransport(EventEmitter):
             await self._write_ssl()
             return
 
-        arrival_time_ms = clock.current_ms()
-        self.__rx_bytes += len(data)
-        self.__rx_packets += 1
-
         first_byte = data[0]
         if first_byte > 19 and first_byte < 64:
             # DTLS
@@ -560,6 +556,7 @@ class RTCDtlsTransport(EventEmitter):
                 await self._handle_data(data)
         elif first_byte > 127 and first_byte < 192 and self._rx_srtp:
             # SRTP / SRTCP
+            arrival_time_ms = clock.current_ms()
             try:
                 if is_rtcp(data):
                     data = self._rx_srtp.unprotect_rtcp(data)
@@ -569,6 +566,9 @@ class RTCDtlsTransport(EventEmitter):
                     await self._handle_rtp_data(data, arrival_time_ms=arrival_time_ms)
             except pylibsrtp.Error as exc:
                 self.__log_debug('x SRTP unprotect failed: %s', exc)
+
+        self.__rx_bytes += len(data)
+        self.__rx_packets += 1
 
     def _register_data_receiver(self, receiver):
         assert self._data_receiver is None
